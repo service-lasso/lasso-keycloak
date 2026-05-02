@@ -1,130 +1,76 @@
-# service-template
+# lasso-keycloak
 
-_Status: starter template repo_
+Release-backed Keycloak service for Service Lasso.
 
-`service-template` is the canonical starting point for new Service Lasso service repos.
+This repo packages upstream Keycloak `23.0.4` into Service Lasso release archives and publishes the service manifest as `service.json`.
 
-Use this repo when you want to create a new service repo that already has:
-- the expected service repo layout
-- a starter `service.json`
-- a starter `services/` inventory example for app/reference repos that embed Service Lasso
-- starter packaging scripts
-- starter verify scripts and harness contract shape
-- starter docs for service contract, packaging, and validation
-- starter CI scaffolding
+## Service Shape
 
-## Use this template
+- Service ID: `keycloak`
+- Upstream: Keycloak `23.0.4`
+- Runtime: `@java`
+- Required dependency: `postgres`
+- Default HTTP port: `8116`
+- Default HTTPS port: `8117`
+- Health endpoint: `http://127.0.0.1:8116/health/ready`
+- Metrics endpoint: `http://127.0.0.1:8116/metrics`
+- Enabled by default: `false`
 
-Recommended flow:
+Keycloak is disabled by default because consuming apps must intentionally own identity data, admin credentials, PostgreSQL retention, and any production-grade secret policy.
 
-1. Create a new repo from this GitHub template.
-2. Rename the sample service files/content for the real service.
-3. Replace the sample runtime payload with the real service payload.
-4. Update `service.json`, `verify/service-harness.json`, and the docs for the new service.
-5. Run the local package + test flow.
-6. Wire the repo into the real released `service-lasso-harness` binary once that integration path is enabled.
+## Release Assets
 
-## Quick start
+Every push to `main` packages and releases:
 
-### Local package
+- `lasso-keycloak-23.0.4-win32.zip`
+- `lasso-keycloak-23.0.4-linux.tar.gz`
+- `lasso-keycloak-23.0.4-darwin.tar.gz`
+- `service.json`
+- `SHA256SUMS.txt`
 
-```powershell
-pwsh -NoLogo -NoProfile -File .\scripts\package.ps1
+Release tags use the Service Lasso pattern `yyyy.m.d-<shortsha>`.
+
+## Service Lasso Manifest
+
+The manifest declares:
+
+- `execservice: "@java"` for startup/build.
+- `depend_on: ["@java", "postgres"]`.
+- `setup.steps.generate-keystore` for local PKCS12 keystore generation.
+- `setup.steps.ensure-database` for creating the `keycloak` PostgreSQL database when needed.
+- `setup.steps.build-keycloak` for the Keycloak optimized build.
+- `globalenv` outputs for URL, ports, admin credentials, health, metrics, data path, and log path.
+
+The default admin values are local-development defaults:
+
+```text
+KEYCLOAK_ADMIN=kadmin
+KEYCLOAK_ADMIN_PASSWORD=kadmin
 ```
 
-### Local tests
+Apps should override these when they include the service.
+
+## Local Verification
+
+Run the package verification for the current platform:
 
 ```powershell
-pwsh -NoLogo -NoProfile -File .\scripts\test.ps1
+npm test
 ```
 
-## Start here for deeper design context
+Run a specific platform target:
 
-Read in this order if you need the underlying design/spec context:
+```powershell
+$env:TARGET_PLATFORM = "win32"
+npm test
+```
 
-1. `docs/openspec-drafts/SPEC-SERVICE-TEMPLATE-REPO.md`
-2. `docs/openspec-drafts/OPENSPEC-TRACKER.md`
-3. `docs/service-contract.md`
-4. `docs/service-json-reference.md`
-5. `docs/packaging.md`
-6. `docs/validation.md`
-7. `docs/reference/adjacent/SPEC-SERVICE-LASSO-HARNESS.md`
+The verifier downloads the official Keycloak archive, creates the Service Lasso release archive, extracts it, and checks the expected Keycloak runtime files and manifest contract.
 
-## What is here
+Full live startup requires Service Lasso with `@java` and `postgres` installed/configured, then:
 
-### OpenSpec drafts
-- `docs/openspec-drafts/SPEC-SERVICE-TEMPLATE-REPO.md`
-- `docs/openspec-drafts/OPENSPEC-TRACKER.md`
-
-### Supporting reference/planning docs
-- `docs/service-contract.md`
-- `docs/service-json-reference.md`
-- `docs/packaging.md`
-- `docs/validation.md`
-- `docs/reference/SERVICE-TEMPLATE-REPO.md`
-- `docs/reference/SERVICE-STRUCTURE-REVIEW.md`
-- `docs/reference/PROPOSED-CODEBASE-STRUCTURE.md`
-- `docs/reference/DECISION-CONTEXT.md`
-- `docs/reference/shared-runtime/QUESTION-LIST-AND-CODE-VALIDATION.md`
-- `docs/reference/shared-runtime/ARCHITECTURE-DECISIONS.md`
-- `docs/reference/shared-runtime/SERVICE-MANAGER-BEHAVIOR.md`
-- `docs/reference/adjacent/SPEC-SERVICE-LASSO-HARNESS.md`
-- `docs/reference/EXAMPLE-REPO-TREE.md`
-- `docs/reference/EXAMPLE-service.json`
-- `docs/reference/EXAMPLE-service-harness.json`
-- `docs/reference/EXAMPLE-verify.ps1`
-- `docs/reference/EXAMPLE-verify.sh`
-
-## Purpose
-
-This repo is the canonical starting point for Service Lasso service repos.
-
-Its role is to define:
-- one-service-per-repo expectations
-- service repo layout
-- service author documentation expectations
-- sample service expectations
-- packaging/release expectations
-- validation-harness integration expectations
-
-## Current status
-
-This repo is usable now as a starter template.
-
-It currently includes:
-- actual starter repo files (`service.json`, `verify/`, `scripts/`, `runtime/`, `config/`, `.github/workflows/`)
-- a tracked example `services/` inventory for downstream app/reference repos
-- a packaged first-pass sample artifact at `dist/echo-service-win32.zip`
-- a starter multi-OS GitHub Actions workflow that packages release archives and runs basic tests
-- starter harness-contract files and thin verify wrappers
-- supporting reference/spec docs for deeper design work
-
-Important current validation note:
-- the pipeline now downloads and invokes the released `service-lasso-harness` binary in CI
-- it still keeps the starter local package/test flow alongside harness verification
-- the current harness version is pinned in workflow config and can be advanced intentionally over time
-
-Important current manifest note:
-- the bounded first-pass core runtime now expects service release/install metadata to live directly in `service.json`
-- the current template example uses a bounded `artifact.kind`, `artifact.source`, and `artifact.platforms` shape to show that direction explicitly
-- bundled app artifacts mean the app package step has already acquired service archives into `services/<service-id>/.state/artifacts/<tag>/<assetName>` so first run can install without downloading those archives
-
-## Baseline app inventory rule
-
-This repo still models the canonical one-service-per-repo contract through the root `service.json`.
-
-In addition, it now carries a tracked example `services/` inventory to show what app/reference repos should own when they embed Service Lasso.
-
-Current baseline inventory:
-- `services/echo-service/service.json`
-- `services/@serviceadmin/service.json`
-- `services/@node/service.json`
-- `services/@localcert/service.json`
-- `services/@nginx/service.json`
-- `services/@traefik/service.json`
-
-Important rule:
-- app/reference repos should own the exact `services/` manifests for the services they intend to manage
-- if an app repo includes `@serviceadmin`, it should also include the manifests needed to satisfy Service Admin's declared service dependencies
-- core Service Lasso services use the `@` prefix: `@node`, `@localcert`, `@nginx`, `@traefik`, and `@serviceadmin`; `echo-service` stays unprefixed because it is the sample/test managed service
-- environment settings like `VITE_SERVICE_LASSO_API_BASE_URL` still belong in app/runtime config, not as extra service manifests
+```powershell
+service-lasso install keycloak
+service-lasso setup run keycloak --include-manual
+service-lasso start keycloak
+```
