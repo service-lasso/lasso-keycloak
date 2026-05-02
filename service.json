@@ -1,134 +1,199 @@
 {
-  "id": "echo-service",
-  "name": "Echo Service",
-  "description": "Minimal sample service used to prove the service-template contract.",
-  "enabled": true,
-  "version": "0.1.0",
-  "logoutput": true,
-  "icon": [
+  "$schema": "https://service-lasso.dev/schemas/service.schema.json",
+  "id": "keycloak",
+  "name": "Keycloak",
+  "description": "Release-backed Keycloak identity service for app-owned local identity scenarios.",
+  "version": "23.0.4",
+  "enabled": false,
+  "execservice": "@java",
+  "ports": {
+    "service": 8116,
+    "https": 8117
+  },
+  "env": {
+    "SERVICE_BIN_PATH": "${SERVICE_ARTIFACT_ROOT}/keycloak",
+    "SERVICE_DATA_PATH": "${SERVICE_ROOT}/runtime/data",
+    "SERVICE_LOG_PATH": "${SERVICE_ROOT}/runtime/logs",
+    "KEYCLOAK_ADMIN": "kadmin",
+    "KEYCLOAK_ADMIN_PASSWORD": "kadmin",
+    "KEYCLOAK_URL": "http://127.0.0.1:${SERVICE_PORT}",
+    "KEYCLOAK_PORT": "${SERVICE_PORT}",
+    "KEYCLOAK_HTTPS_PORT": "${HTTPS_PORT}",
+    "KEYCLOAK_URL_HEALTH": "http://127.0.0.1:${SERVICE_PORT}/health",
+    "KEYCLOAK_URL_HEALTH_READY": "http://127.0.0.1:${SERVICE_PORT}/health/ready",
+    "KEYCLOAK_URL_HEALTH_LIVE": "http://127.0.0.1:${SERVICE_PORT}/health/live",
+    "KEYCLOAK_URL_METRICS": "http://127.0.0.1:${SERVICE_PORT}/metrics",
+    "KC_HTTP_PORT": "${SERVICE_PORT}",
+    "KC_HTTPS_PORT": "${HTTPS_PORT}",
+    "KC_HTTP_ENABLED": "true",
+    "KC_PROXY": "edge",
+    "KC_PROXY_ADDRESS_FORWARDING": "true",
+    "KC_LOG": "console,file",
+    "KC_LOG_LEVEL": "error",
+    "KC_LOG_GELF_LEVEL": "error",
+    "KC_LOG_FILE": "${SERVICE_LOG_PATH}/keycloak.log",
+    "KC_DB": "postgres",
+    "KC_DB_KIND": "postgres",
+    "KC_DB_DIALECT": "org.hibernate.dialect.PostgreSQL10Dialect",
+    "KC_DB_DRIVER": "org.postgresql.Driver",
+    "KC_DB_SCHEMA": "public",
+    "KC_DB_URL_HOST": "${POSTGRE_HOST}",
+    "KC_DB_URL_PORT": "${POSTGRE_PORT}",
+    "KC_DB_URL": "jdbc:postgresql://${POSTGRE_HOST}:${POSTGRE_PORT}/keycloak",
+    "KC_DB_USERNAME": "${POSTGRE_AUTH_USERNAME}",
+    "KC_DB_PASSWORD": "${POSTGRE_AUTH_PASSWORD}",
+    "KC_CONFIG_KEYSTORE": "${SERVICE_DATA_PATH}/conf/server.keystore",
+    "KC_CONFIG_KEYSTORE_PASSWORD": "${KEYCLOAK_ADMIN_PASSWORD}",
+    "KC_HTTPS_KEY_STORE_PASSWORD": "${KEYCLOAK_ADMIN_PASSWORD}",
+    "KC_HTTPS_TRUST_STORE_PASSWORD": "${KEYCLOAK_ADMIN_PASSWORD}",
+    "KC_HEALTH_ENABLED": "true",
+    "KC_METRICS_ENABLED": "true",
+    "KC_TRANSACTION_XA_ENABLED": "false",
+    "KC_HOSTNAME_STRICT": "false",
+    "KC_HOSTNAME_STRICT_HTTPS": "false",
+    "KEYCLOAK_PRODUCTION": "true",
+    "JAVA_OPTS_APPEND": "-Djava.net.preferIPv4Stack=true",
+    "PGPASSWORD": "${POSTGRE_AUTH_PASSWORD}",
+    "PGDATABASE": "keycloak",
+    "PGHOST": "${POSTGRE_HOST}",
+    "PGPORT": "${POSTGRE_PORT}",
+    "PGUSER": "${POSTGRE_AUTH_USERNAME}"
+  },
+  "globalenv": {
+    "KEYCLOAK_URL": "${KEYCLOAK_URL}",
+    "KEYCLOAK_PORT": "${KEYCLOAK_PORT}",
+    "KEYCLOAK_HTTPS_PORT": "${KEYCLOAK_HTTPS_PORT}",
+    "KEYCLOAK_ADMIN": "${KEYCLOAK_ADMIN}",
+    "KEYCLOAK_ADMIN_PASSWORD": "${KEYCLOAK_ADMIN_PASSWORD}",
+    "KEYCLOAK_URL_HEALTH": "${KEYCLOAK_URL_HEALTH}",
+    "KEYCLOAK_URL_HEALTH_READY": "${KEYCLOAK_URL_HEALTH_READY}",
+    "KEYCLOAK_URL_HEALTH_LIVE": "${KEYCLOAK_URL_HEALTH_LIVE}",
+    "KEYCLOAK_URL_METRICS": "${KEYCLOAK_URL_METRICS}",
+    "KEYCLOAK_DATA_PATH": "${SERVICE_DATA_PATH}",
+    "KEYCLOAK_LOG_PATH": "${SERVICE_LOG_PATH}"
+  },
+  "urls": [
     {
-      "provider": "lucide",
-      "name": "terminal"
+      "label": "Keycloak",
+      "url": "${KEYCLOAK_URL}/",
+      "kind": "local"
+    },
+    {
+      "label": "Admin Console",
+      "url": "${KEYCLOAK_URL}/admin/",
+      "kind": "local"
+    },
+    {
+      "label": "Ready Health",
+      "url": "${KEYCLOAK_URL_HEALTH_READY}",
+      "kind": "local"
+    },
+    {
+      "label": "Metrics",
+      "url": "${KEYCLOAK_URL_METRICS}",
+      "kind": "local"
     }
   ],
-  "servicetype": 50,
-  "servicelocation": 10,
-  "logo": [],
-  "logs": {
-    "default": {
-      "path": "logs/echo-service.log"
-    }
-  },
-  "meta": {
-    "developers": [
-      {
-        "name": "Service Lasso contributors"
-      }
-    ],
-    "license": "Apache-2.0",
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/service-lasso/service-template.git"
-    },
-    "websiteUrl": "https://github.com/service-lasso/service-template",
-    "documentationUrl": "https://github.com/service-lasso/service-template/blob/main/README.md",
-    "issuesUrl": "https://github.com/service-lasso/service-template/issues",
-    "support": {
-      "issuesUrl": "https://github.com/service-lasso/service-template/issues"
-    },
-    "links": {
-      "repository": "https://github.com/service-lasso/service-template",
-      "issues": "https://github.com/service-lasso/service-template/issues",
-      "documentation": "https://github.com/service-lasso/service-template/blob/main/README.md"
-    },
-    "tags": [
-      "service-lasso",
-      "template",
-      "example-service"
-    ]
-  },
   "artifact": {
     "kind": "archive",
     "source": {
       "type": "github-release",
-      "repo": "service-lasso/service-template",
+      "repo": "service-lasso/lasso-keycloak",
       "channel": "latest"
     },
     "platforms": {
       "win32": {
-        "assetName": "echo-service-win32.zip",
-        "archiveType": "zip",
-        "command": "./echo-service.exe",
-        "args": []
-      },
-      "darwin": {
-        "assetName": "echo-service-darwin.tar.gz",
-        "archiveType": "tar.gz",
-        "command": "./echo-service",
-        "args": []
+        "assetName": "lasso-keycloak-23.0.4-win32.zip",
+        "archiveType": "zip"
       },
       "linux": {
-        "assetName": "echo-service-linux.tar.gz",
-        "archiveType": "tar.gz",
-        "command": "./echo-service",
-        "args": []
+        "assetName": "lasso-keycloak-23.0.4-linux.tar.gz",
+        "archiveType": "tar.gz"
       },
-      "default": {
-        "assetName": "echo-service-win32.zip",
-        "archiveType": "zip",
-        "command": "./echo-service.exe",
-        "args": []
+      "darwin": {
+        "assetName": "lasso-keycloak-23.0.4-darwin.tar.gz",
+        "archiveType": "tar.gz"
       }
     }
   },
-  "actions": {
-    "install": {
-      "description": "Acquire or unpack the packaged echo-service runtime artifact.",
-      "mode": "converge-install",
-      "idempotent": true
-    },
-    "config": {
-      "description": "Materialize deployment-local echo-service config and env values.",
-      "mode": "converge-config",
-      "idempotent": true
-    },
-    "update": {
-      "description": "Apply a newer release artifact and reconcile update-time changes before restart.",
-      "mode": "converge-update",
-      "idempotent": true
-    },
-    "start": {
-      "description": "Start the sample echo service.",
-      "mode": "runtime-start",
-      "idempotent": true
-    },
-    "stop": {
-      "description": "Stop the sample echo service gracefully.",
-      "mode": "runtime-stop",
-      "idempotent": true
-    },
-    "restart": {
-      "description": "Restart the sample echo service after config or update changes.",
-      "mode": "runtime-restart",
-      "idempotent": false
-    },
-    "rollback": {
-      "description": "Restore the previously deployed artifact if an update fails validation.",
-      "mode": "state-rollback",
-      "idempotent": false
+  "commandline": {
+    "win32": "-Dprogram.name=kc.bat -Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.err.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/urandom -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -XX:FlightRecorderOptions=stackdepth=512 --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED -Dkc.home.dir=\"${SERVICE_BIN_PATH}\" -Djboss.server.config.dir=\"${SERVICE_BIN_PATH}/conf\" -Dkeycloak.theme.dir=\"${SERVICE_BIN_PATH}/themes\" -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus-log-max-startup-records=10000 -cp \"${SERVICE_BIN_PATH}/lib/quarkus-run.jar\" io.quarkus.bootstrap.runner.QuarkusEntryPoint start",
+    "linux": "-Dprogram.name=kc.sh -Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.err.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/urandom -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -XX:FlightRecorderOptions=stackdepth=512 --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED -Dkc.home.dir=\"${SERVICE_BIN_PATH}\" -Djboss.server.config.dir=\"${SERVICE_BIN_PATH}/conf\" -Dkeycloak.theme.dir=\"${SERVICE_BIN_PATH}/themes\" -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus-log-max-startup-records=10000 -cp \"${SERVICE_BIN_PATH}/lib/quarkus-run.jar\" io.quarkus.bootstrap.runner.QuarkusEntryPoint start",
+    "darwin": "-Dprogram.name=kc.sh -Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.err.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/urandom -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -XX:FlightRecorderOptions=stackdepth=512 --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED -Dkc.home.dir=\"${SERVICE_BIN_PATH}\" -Djboss.server.config.dir=\"${SERVICE_BIN_PATH}/conf\" -Dkeycloak.theme.dir=\"${SERVICE_BIN_PATH}/themes\" -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus-log-max-startup-records=10000 -cp \"${SERVICE_BIN_PATH}/lib/quarkus-run.jar\" io.quarkus.bootstrap.runner.QuarkusEntryPoint start"
+  },
+  "install": {
+    "files": [
+      {
+        "path": "./runtime/data/conf/.keep",
+        "content": ""
+      },
+      {
+        "path": "./runtime/logs/.keep",
+        "content": ""
+      }
+    ]
+  },
+  "setup": {
+    "steps": {
+      "generate-keystore": {
+        "description": "Generate the local PKCS12 keystore used by Keycloak HTTPS/config bootstrap.",
+        "depend_on": [
+          "@java"
+        ],
+        "commandline": {
+          "win32": "\"${JAVA_HOME}/bin/keytool.exe\" -genkeypair -storepass ${KEYCLOAK_ADMIN_PASSWORD} -storetype PKCS12 -keyalg RSA -keysize 2048 -dname \"CN=server\" -alias server -ext \"SAN:c=DNS:localhost,DNS:typerefinery.localhost,IP:127.0.0.1\" -keystore \"${SERVICE_DATA_PATH}/conf/server.keystore\"",
+          "linux": "\"${JAVA_HOME}/bin/keytool\" -genkeypair -storepass ${KEYCLOAK_ADMIN_PASSWORD} -storetype PKCS12 -keyalg RSA -keysize 2048 -dname \"CN=server\" -alias server -ext \"SAN:c=DNS:localhost,DNS:typerefinery.localhost,IP:127.0.0.1\" -keystore \"${SERVICE_DATA_PATH}/conf/server.keystore\"",
+          "darwin": "\"${JAVA_HOME}/bin/keytool\" -genkeypair -storepass ${KEYCLOAK_ADMIN_PASSWORD} -storetype PKCS12 -keyalg RSA -keysize 2048 -dname \"CN=server\" -alias server -ext \"SAN:c=DNS:localhost,DNS:typerefinery.localhost,IP:127.0.0.1\" -keystore \"${SERVICE_DATA_PATH}/conf/server.keystore\""
+        },
+        "timeoutSeconds": 60,
+        "rerun": "ifMissing"
+      },
+      "ensure-database": {
+        "description": "Ensure the PostgreSQL keycloak database exists before optimized build/start.",
+        "depend_on": [
+          "postgres"
+        ],
+        "commandline": {
+          "win32": "\"${POSTGRE_HOME}/bin/psql.exe\" -h ${POSTGRE_HOST} -p ${POSTGRE_PORT} -U ${POSTGRE_AUTH_USERNAME} -d postgres -v ON_ERROR_STOP=1 -c \"SELECT 'CREATE DATABASE keycloak' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\\gexec\"",
+          "linux": "\"${POSTGRE_HOME}/bin/psql\" -h ${POSTGRE_HOST} -p ${POSTGRE_PORT} -U ${POSTGRE_AUTH_USERNAME} -d postgres -v ON_ERROR_STOP=1 -c \"SELECT 'CREATE DATABASE keycloak' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\\gexec\"",
+          "darwin": "\"${POSTGRE_HOME}/bin/psql\" -h ${POSTGRE_HOST} -p ${POSTGRE_PORT} -U ${POSTGRE_AUTH_USERNAME} -d postgres -v ON_ERROR_STOP=1 -c \"SELECT 'CREATE DATABASE keycloak' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\\gexec\""
+        },
+        "timeoutSeconds": 60,
+        "rerun": "ifMissing"
+      },
+      "build-keycloak": {
+        "description": "Run the Keycloak optimized build after keystore and database preparation.",
+        "depend_on": [
+          "keycloak:generate-keystore",
+          "keycloak:ensure-database",
+          "@java"
+        ],
+        "execservice": "@java",
+        "commandline": {
+          "win32": "-Dprogram.name=kc.bat -Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Dkc.config.built=true -Dkc.config.build-and-exit=true -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.err.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/urandom -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -XX:FlightRecorderOptions=stackdepth=512 --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED -Dkc.home.dir=\"${SERVICE_BIN_PATH}\" -Djboss.server.config.dir=\"${SERVICE_BIN_PATH}/conf\" -Dkeycloak.theme.dir=\"${SERVICE_BIN_PATH}/themes\" -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus-log-max-startup-records=10000 -cp \"${SERVICE_BIN_PATH}/lib/quarkus-run.jar\" io.quarkus.bootstrap.runner.QuarkusEntryPoint build",
+          "linux": "-Dprogram.name=kc.sh -Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Dkc.config.built=true -Dkc.config.build-and-exit=true -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.err.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/urandom -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -XX:FlightRecorderOptions=stackdepth=512 --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED -Dkc.home.dir=\"${SERVICE_BIN_PATH}\" -Djboss.server.config.dir=\"${SERVICE_BIN_PATH}/conf\" -Dkeycloak.theme.dir=\"${SERVICE_BIN_PATH}/themes\" -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus-log-max-startup-records=10000 -cp \"${SERVICE_BIN_PATH}/lib/quarkus-run.jar\" io.quarkus.bootstrap.runner.QuarkusEntryPoint build",
+          "darwin": "-Dprogram.name=kc.sh -Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Dkc.config.built=true -Dkc.config.build-and-exit=true -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.err.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/urandom -XX:+UseParallelGC -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -XX:FlightRecorderOptions=stackdepth=512 --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED -Dkc.home.dir=\"${SERVICE_BIN_PATH}\" -Djboss.server.config.dir=\"${SERVICE_BIN_PATH}/conf\" -Dkeycloak.theme.dir=\"${SERVICE_BIN_PATH}/themes\" -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus-log-max-startup-records=10000 -cp \"${SERVICE_BIN_PATH}/lib/quarkus-run.jar\" io.quarkus.bootstrap.runner.QuarkusEntryPoint build"
+        },
+        "timeoutSeconds": 300,
+        "rerun": "ifMissing"
+      }
     }
   },
-  "execconfig": {
-    "serviceorder": 100,
-    "serviceport": 0,
-    "execcwd": "runtime",
-    "executable": "echo-service",
-    "env": {
-      "ECHO_MESSAGE": "hello from service-template"
-    },
-    "depend_on": [],
-    "healthcheck": {
-      "type": "process"
-    }
+  "healthcheck": {
+    "type": "http",
+    "url": "${KEYCLOAK_URL_HEALTH_READY}",
+    "expected_status": 200,
+    "retries": 180,
+    "interval": 1000
+  },
+  "depend_on": [
+    "@java",
+    "postgres"
+  ],
+  "updates": {
+    "enabled": true,
+    "mode": "notify",
+    "track": "latest",
+    "checkIntervalSeconds": 86400
   }
 }
