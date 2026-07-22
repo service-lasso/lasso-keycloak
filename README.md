@@ -67,7 +67,7 @@ build
 
 `generate-keystore` creates `${KC_CONFIG_KEYSTORE}` or `${SERVICE_DATA_PATH}/conf/server.keystore` when it is missing.
 `ensure-database` polls PostgreSQL through the Service Lasso-provided `POSTGRE_*` environment before creating the
-`keycloak` database idempotently. `build` runs the Keycloak optimized build using `JAVA_HOME`, `SERVICE_BIN_PATH`, and
+Service Lasso-resolved `PGDATABASE` database idempotently. `build` runs the Keycloak optimized build using `JAVA_HOME`, `SERVICE_BIN_PATH`, and
 the manifest-provided `KC_*` environment.
 
 Setup stdout/stderr is captured by Service Lasso under each setup step's `logs/setup/<step>/<run>/` directory. For
