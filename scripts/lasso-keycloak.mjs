@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const isWindows = process.platform === "win32";
 const command = process.argv[2];
@@ -10,29 +11,29 @@ function usage() {
   console.error("Usage: node scripts/lasso-keycloak.mjs <generate-keystore|ensure-database|build>");
 }
 
-function requireEnv(name) {
-  const value = process.env[name];
+function requireEnv(name, env = process.env) {
+  const value = env[name];
   if (!value) {
     throw new Error(`Missing required environment variable ${name}.`);
   }
   return value;
 }
 
-function envPath(rootName, relativeExecutable, fallback) {
-  const root = process.env[rootName];
+function envPath(rootName, relativeExecutable, fallback, env = process.env) {
+  const root = env[rootName];
   return root ? path.join(root, ...relativeExecutable) : fallback;
 }
 
-function javaExecutable() {
-  return envPath("JAVA_HOME", ["bin", isWindows ? "java.exe" : "java"], "java");
+function javaExecutable(env = process.env) {
+  return envPath("JAVA_HOME", ["bin", isWindows ? "java.exe" : "java"], "java", env);
 }
 
-function keytoolExecutable() {
-  return envPath("JAVA_HOME", ["bin", isWindows ? "keytool.exe" : "keytool"], "keytool");
+function keytoolExecutable(env = process.env) {
+  return envPath("JAVA_HOME", ["bin", isWindows ? "keytool.exe" : "keytool"], "keytool", env);
 }
 
-function psqlExecutable() {
-  return envPath("POSTGRE_HOME", ["bin", isWindows ? "psql.exe" : "psql"], "psql");
+function psqlExecutable(env = process.env) {
+  return envPath("POSTGRE_HOME", ["bin", isWindows ? "psql.exe" : "psql"], "psql", env);
 }
 
 function run(executable, args, options = {}) {
@@ -48,29 +49,35 @@ function run(executable, args, options = {}) {
   }
 }
 
-function probe(executable, args, options = {}) {
-  return spawnSync(executable, args, {
-    stdio: "ignore",
-    shell: false,
-    env: process.env,
-    ...options,
-  }).status === 0;
+function redact(text, env = process.env) {
+  let sanitized = String(text ?? "");
+  for (const name of ["PGPASSWORD", "POSTGRE_AUTH_PASSWORD", "KC_DB_PASSWORD", "KEYCLOAK_ADMIN_PASSWORD"]) {
+    const value = env[name];
+    if (value) {
+      sanitized = sanitized.split(value).join("<redacted>");
+    }
+  }
+  return sanitized.trim();
 }
 
-function output(executable, args, options = {}) {
-  const result = spawnSync(executable, args, {
+function isAuthenticationFailure(stderr) {
+  return /authentication failed|password authentication failed|no pg_hba\.conf entry/i.test(stderr);
+}
+
+function invokePsql(args, { env = process.env } = {}) {
+  return spawnSync(psqlExecutable(env), args, {
     encoding: "utf8",
     shell: false,
-    env: process.env,
-    ...options,
+    env,
   });
+}
 
+function assertPsql(result, args, env = process.env) {
   if (result.status !== 0) {
     throw new Error(
-      `${executable} ${args.join(" ")} failed with exit code ${result.status ?? "unknown"}.\n${result.stderr ?? ""}`,
+      `${psqlExecutable(env)} ${args.join(" ")} failed with exit code ${result.status ?? "unknown"}.\n${redact(result.stderr, env)}`,
     );
   }
-
   return (result.stdout ?? "").trim();
 }
 
@@ -78,30 +85,39 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function waitForPostgresReady(timeoutMs = 60_000) {
+async function waitForPostgresReady({ timeoutMs = 60_000, env = process.env, psql = invokePsql, sleepFn = sleep } = {}) {
   const startedAt = Date.now();
-  const executable = psqlExecutable();
   const args = [
     "-h",
-    requireEnv("POSTGRE_HOST"),
+    requireEnv("POSTGRE_HOST", env),
     "-p",
-    requireEnv("POSTGRE_PORT"),
+    requireEnv("POSTGRE_PORT", env),
     "-U",
-    requireEnv("POSTGRE_AUTH_USERNAME"),
+    requireEnv("POSTGRE_AUTH_USERNAME", env),
     "-d",
     "postgres",
     "-tAc",
     "SELECT 1",
   ];
 
+  let lastError = "";
   while (Date.now() - startedAt < timeoutMs) {
-    if (probe(executable, args)) {
+    const result = psql(args, { env });
+    if (result.status === 0) {
       return;
     }
-    await sleep(500);
+    lastError = redact(result.stderr, env);
+    if (isAuthenticationFailure(lastError)) {
+      throw new Error(
+        `PostgreSQL authentication failed for user ${requireEnv("POSTGRE_AUTH_USERNAME", env)} at ${requireEnv("POSTGRE_HOST", env)}:${requireEnv("POSTGRE_PORT", env)}. ${lastError}`,
+      );
+    }
+    await sleepFn(500);
   }
 
-  throw new Error("Timed out waiting for PostgreSQL readiness.");
+  throw new Error(
+    `Timed out waiting for PostgreSQL readiness at ${requireEnv("POSTGRE_HOST", env)}:${requireEnv("POSTGRE_PORT", env)} as user ${requireEnv("POSTGRE_AUTH_USERNAME", env)}.${lastError ? ` Last psql error: ${lastError}` : ""}`,
+  );
 }
 
 async function generateKeystore() {
@@ -133,39 +149,80 @@ async function generateKeystore() {
   ]);
 }
 
-async function ensureDatabase() {
-  await waitForPostgresReady();
-  run(psqlExecutable(), [
+export async function ensureDatabase({ env = process.env, psql = invokePsql, timeoutMs = 60_000, sleepFn = sleep } = {}) {
+  const host = requireEnv("POSTGRE_HOST", env);
+  const port = requireEnv("POSTGRE_PORT", env);
+  const user = requireEnv("POSTGRE_AUTH_USERNAME", env);
+  const database = requireEnv("PGDATABASE", env);
+
+  console.log(`[lasso-keycloak] ensuring PostgreSQL database "${database}" exists at ${host}:${port} as ${user}`);
+  await waitForPostgresReady({ timeoutMs, env, psql, sleepFn });
+  assertPsql(psql([
     "-h",
-    requireEnv("POSTGRE_HOST"),
+    host,
     "-p",
-    requireEnv("POSTGRE_PORT"),
+    port,
     "-U",
-    requireEnv("POSTGRE_AUTH_USERNAME"),
+    user,
     "-d",
     "postgres",
     "-v",
     "ON_ERROR_STOP=1",
+    "-v",
+    `database_name=${database}`,
     "-c",
-    "SELECT 'CREATE DATABASE keycloak' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\\gexec",
-  ]);
-  const exists = output(psqlExecutable(), [
+    "SELECT 'CREATE DATABASE ' || quote_ident(:'database_name') WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'database_name')\\gexec",
+  ], { env }), [
     "-h",
-    requireEnv("POSTGRE_HOST"),
+    host,
     "-p",
-    requireEnv("POSTGRE_PORT"),
+    port,
     "-U",
-    requireEnv("POSTGRE_AUTH_USERNAME"),
+    user,
     "-d",
     "postgres",
     "-v",
     "ON_ERROR_STOP=1",
+    "-v",
+    `database_name=${database}`,
+    "-c",
+    "SELECT 'CREATE DATABASE ' || quote_ident(:'database_name') WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'database_name')\\gexec",
+  ], env);
+  const exists = assertPsql(psql([
+    "-h",
+    host,
+    "-p",
+    port,
+    "-U",
+    user,
+    "-d",
+    "postgres",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-v",
+    `database_name=${database}`,
     "-tAc",
-    "SELECT 1 FROM pg_database WHERE datname = 'keycloak'",
-  ]);
+    "SELECT 1 FROM pg_database WHERE datname = :'database_name'",
+  ], { env }), [
+    "-h",
+    host,
+    "-p",
+    port,
+    "-U",
+    user,
+    "-d",
+    "postgres",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-v",
+    `database_name=${database}`,
+    "-tAc",
+    "SELECT 1 FROM pg_database WHERE datname = :'database_name'",
+  ], env);
   if (exists !== "1") {
-    throw new Error("PostgreSQL did not report the keycloak database after setup.");
+    throw new Error(`PostgreSQL did not report the ${database} database after setup.`);
   }
+  console.log(`[lasso-keycloak] PostgreSQL database "${database}" is ready`);
 }
 
 async function buildKeycloak() {
@@ -214,10 +271,12 @@ const commands = {
   build: buildKeycloak,
 };
 
-if (!commands[command]) {
+const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (invokedDirectly && !commands[command]) {
   usage();
   process.exitCode = 2;
-} else {
+} else if (invokedDirectly) {
   try {
     await commands[command]();
   } catch (error) {
