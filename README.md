@@ -8,9 +8,9 @@ This repo packages upstream Keycloak `23.0.4` into Service Lasso release archive
 
 - Service ID: `keycloak`
 - Upstream: Keycloak `23.0.4`
-- Runtime: `@java`
-- Required dependency: `postgres`
-- Setup runtime dependency: `@node`
+- Runtime provider: `@java`
+- Setup runtime provider: `@node`
+- Database provider: `postgres`
 - Default HTTP port: `8116`
 - Default HTTPS port: `8117`
 - Health endpoint: `http://127.0.0.1:8116/health/ready`
@@ -36,12 +36,17 @@ Release tags use the Service Lasso pattern `yyyy.m.d-<shortsha>`.
 The manifest declares:
 
 - `execservice: "@java"` for startup/build.
-- `depend_on: ["@java", "postgres"]`.
+- `depend_on: ["@java", "@node", "postgres"]`.
 - `setup.steps.generate-keystore` for local PKCS12 keystore generation.
 - `setup.steps.ensure-database` for creating the `keycloak` PostgreSQL database when needed.
 - `setup.steps.build-keycloak` for the Keycloak optimized build.
 - `scripts/lasso-keycloak.mjs` as the package-owned cross-platform helper for those setup steps.
 - `globalenv` outputs for URL, ports, admin credentials, health, metrics, data path, and log path.
+
+Until Service Lasso supports provider capability or alias resolution, Keycloak uses exact concrete provider service IDs:
+`@java` for the Keycloak runtime, `@node` for the cross-platform setup helper, and `postgres` for the backing database.
+The verifier checks the top-level and setup-step dependencies for these IDs and fails with a provider-specific error if
+one is missing or if the legacy PostgreSQL ID `postgredb` appears.
 
 The default admin values are local-development defaults:
 
@@ -92,7 +97,7 @@ npm test
 The verifier downloads the official Keycloak archive, creates the Service Lasso release archive, extracts it, and checks the expected Keycloak runtime files and manifest contract.
 It also verifies that `scripts/lasso-keycloak.mjs` is included in the release artifact.
 
-Full live startup requires Service Lasso with `@java` and `postgres` installed/configured, then:
+Full live startup requires Service Lasso with `@java`, `@node`, and `postgres` installed/configured, then:
 
 ```powershell
 service-lasso install keycloak
