@@ -75,11 +75,26 @@ expect(manifest.enabled === false, "Keycloak should be disabled by default so ap
 expect(manifest.execservice === "@java", "Keycloak must run through the Java provider.");
 expect(manifest.artifact?.source?.repo === "service-lasso/lasso-keycloak", "Manifest artifact source must point at service-lasso/lasso-keycloak.");
 expect(manifest.depend_on?.includes("@java"), "Keycloak must depend on @java.");
+expect(manifest.depend_on?.includes("@node"), "Keycloak setup helper must depend on @node.");
 expect(manifest.depend_on?.includes("postgres"), "Keycloak must depend on postgres.");
 expect(manifest.setup?.steps?.["generate-keystore"], "Keycloak must declare generate-keystore setup.");
 expect(manifest.setup?.steps?.["ensure-database"], "Keycloak must declare ensure-database setup.");
 expect(manifest.setup?.steps?.["build-keycloak"], "Keycloak must declare build-keycloak setup.");
 expect(manifest.healthcheck?.url === "${KEYCLOAK_URL_HEALTH_READY}", "Keycloak healthcheck should use the ready endpoint.");
+
+for (const [stepId, helperCommand] of [
+  ["generate-keystore", "generate-keystore"],
+  ["ensure-database", "ensure-database"],
+  ["build-keycloak", "build"],
+]) {
+  const step = manifest.setup.steps[stepId];
+  expect(step.execservice === "@node", `Setup step ${stepId} must run through @node.`);
+  expect(step.depend_on?.includes("@node"), `Setup step ${stepId} must depend on @node.`);
+  expect(
+    step.commandline?.default === `"${"${SERVICE_ARTIFACT_ROOT}"}/scripts/lasso-keycloak.mjs" ${helperCommand}`,
+    `Setup step ${stepId} should call the packaged lasso-keycloak helper.`,
+  );
+}
 
 const artifact = manifest.artifact.platforms[platform];
 expect(Boolean(artifact), `Manifest is missing artifact platform ${platform}.`);
@@ -98,6 +113,7 @@ await extractArchive(packaged.outputPath, extractRoot, target.archiveType);
 
 const payloadRoot = path.join(extractRoot, "keycloak");
 expect(existsSync(payloadRoot), "Package must contain keycloak/ at archive root.");
+expect(existsSync(path.join(extractRoot, "scripts", "lasso-keycloak.mjs")), "Package must contain scripts/lasso-keycloak.mjs.");
 expect(existsSync(path.join(payloadRoot, "bin", target.startupScript)), `Package must contain bin/${target.startupScript}.`);
 expect(existsSync(path.join(payloadRoot, "lib", "quarkus-run.jar")), "Package must contain lib/quarkus-run.jar.");
 expect(existsSync(path.join(payloadRoot, "conf", "keycloak.conf")), "Package must contain conf/keycloak.conf.");
