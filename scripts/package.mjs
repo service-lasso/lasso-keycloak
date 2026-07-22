@@ -114,11 +114,14 @@ export async function packageKeycloak(platform = targetPlatform, version = keycl
 
   const keycloakRoot = await findKeycloakRoot(extractRoot, version);
   await cp(keycloakRoot, path.join(packageRoot, "keycloak"), { recursive: true });
+  await mkdir(path.join(packageRoot, "scripts"), { recursive: true });
+  await cp(path.join(repoRoot, "scripts", "lasso-keycloak.mjs"), path.join(packageRoot, "scripts", "lasso-keycloak.mjs"));
 
   if (platform !== "win32") {
     await chmod(path.join(packageRoot, "keycloak", "bin", "kc.sh"), 0o755);
     await chmod(path.join(packageRoot, "keycloak", "bin", "kcadm.sh"), 0o755);
     await chmod(path.join(packageRoot, "keycloak", "bin", "kcreg.sh"), 0o755);
+    await chmod(path.join(packageRoot, "scripts", "lasso-keycloak.mjs"), 0o755);
   }
 
   await writeFile(
