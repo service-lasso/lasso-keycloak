@@ -40,6 +40,7 @@ The manifest declares:
 - `setup.steps.generate-keystore` for local PKCS12 keystore generation.
 - `setup.steps.ensure-database` for creating the `keycloak` PostgreSQL database when needed.
 - `setup.steps.build-keycloak` for the Keycloak optimized build.
+- `healthchecks[]` with `keycloak-ready` against the Keycloak ready endpoint.
 - `scripts/lasso-keycloak.mjs` as the package-owned cross-platform helper for those setup steps.
 - `globalenv` outputs for URL, ports, admin credentials, health, metrics, data path, and log path.
 

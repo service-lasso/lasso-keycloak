@@ -178,13 +178,16 @@
       }
     }
   },
-  "healthcheck": {
-    "type": "http",
-    "url": "${KEYCLOAK_URL_HEALTH_READY}",
-    "expected_status": 200,
-    "retries": 180,
-    "interval": 1000
-  },
+  "healthchecks": [
+    {
+      "id": "keycloak-ready",
+      "type": "http",
+      "url": "${KEYCLOAK_URL_HEALTH_READY}",
+      "expected_status": 200,
+      "retries": 180,
+      "interval": 1000
+    }
+  ],
   "depend_on": [
     "@java",
     "@node",
