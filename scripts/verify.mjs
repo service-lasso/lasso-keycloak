@@ -99,7 +99,14 @@ expectNoLegacyProviderIds(manifest.depend_on, "Top-level depend_on");
 expect(manifest.setup?.steps?.["generate-keystore"], "Keycloak must declare generate-keystore setup.");
 expect(manifest.setup?.steps?.["ensure-database"], "Keycloak must declare ensure-database setup.");
 expect(manifest.setup?.steps?.["build-keycloak"], "Keycloak must declare build-keycloak setup.");
-expect(manifest.healthcheck?.url === "${KEYCLOAK_URL_HEALTH_READY}", "Keycloak healthcheck should use the ready endpoint.");
+expect(!Object.hasOwn(manifest, "healthcheck"), "Keycloak manifest must use canonical healthchecks[] instead of singular healthcheck.");
+expect(Array.isArray(manifest.healthchecks), "Keycloak manifest must declare canonical healthchecks[].");
+expect(manifest.healthchecks.length === 1, "Keycloak should declare one required readiness healthcheck.");
+const [readyHealthcheck] = manifest.healthchecks;
+expect(readyHealthcheck.id === "keycloak-ready", "Keycloak ready healthcheck must use stable id keycloak-ready.");
+expect(readyHealthcheck.type === "http", "Keycloak ready healthcheck should be an HTTP check.");
+expect(readyHealthcheck.url === "${KEYCLOAK_URL_HEALTH_READY}", "Keycloak healthcheck should use the ready endpoint.");
+expect(readyHealthcheck.expected_status === 200, "Keycloak ready healthcheck should expect HTTP 200.");
 
 for (const [stepId, helperCommand] of [
   ["generate-keystore", "generate-keystore"],
