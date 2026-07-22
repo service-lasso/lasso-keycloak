@@ -69,14 +69,33 @@ function expect(condition, message) {
 }
 
 const manifest = JSON.parse(await readFile(path.join(repoRoot, "service.json"), "utf8"));
+const requiredProviderIds = ["@java", "@node", "postgres"];
+
+function expectDependency(container, dependencyId, label) {
+  expect(
+    container?.includes(dependencyId),
+    `${label} must depend on concrete provider id "${dependencyId}" until provider capability aliases are available. Required ids: ${requiredProviderIds.join(", ")}.`,
+  );
+}
+
+function expectNoLegacyProviderIds(container, label) {
+  for (const legacyId of ["postgredb"]) {
+    expect(
+      !container?.includes(legacyId),
+      `${label} must not use legacy provider id "${legacyId}". Use concrete provider id "postgres".`,
+    );
+  }
+}
+
 expect(manifest.id === "keycloak", `Expected service id "keycloak", got "${manifest.id}".`);
 expect(manifest.version === version, `Expected manifest version ${version}, got ${manifest.version}.`);
 expect(manifest.enabled === false, "Keycloak should be disabled by default so apps opt in explicitly.");
 expect(manifest.execservice === "@java", "Keycloak must run through the Java provider.");
 expect(manifest.artifact?.source?.repo === "service-lasso/lasso-keycloak", "Manifest artifact source must point at service-lasso/lasso-keycloak.");
-expect(manifest.depend_on?.includes("@java"), "Keycloak must depend on @java.");
-expect(manifest.depend_on?.includes("@node"), "Keycloak setup helper must depend on @node.");
-expect(manifest.depend_on?.includes("postgres"), "Keycloak must depend on postgres.");
+for (const providerId of requiredProviderIds) {
+  expectDependency(manifest.depend_on, providerId, "Top-level depend_on");
+}
+expectNoLegacyProviderIds(manifest.depend_on, "Top-level depend_on");
 expect(manifest.setup?.steps?.["generate-keystore"], "Keycloak must declare generate-keystore setup.");
 expect(manifest.setup?.steps?.["ensure-database"], "Keycloak must declare ensure-database setup.");
 expect(manifest.setup?.steps?.["build-keycloak"], "Keycloak must declare build-keycloak setup.");
@@ -89,12 +108,17 @@ for (const [stepId, helperCommand] of [
 ]) {
   const step = manifest.setup.steps[stepId];
   expect(step.execservice === "@node", `Setup step ${stepId} must run through @node.`);
-  expect(step.depend_on?.includes("@node"), `Setup step ${stepId} must depend on @node.`);
+  expectDependency(step.depend_on, "@node", `Setup step ${stepId}`);
+  expectNoLegacyProviderIds(step.depend_on, `Setup step ${stepId}`);
   expect(
     step.commandline?.default === `"${"${SERVICE_ARTIFACT_ROOT}"}/scripts/lasso-keycloak.mjs" ${helperCommand}`,
     `Setup step ${stepId} should call the packaged lasso-keycloak helper.`,
   );
 }
+
+expectDependency(manifest.setup.steps["generate-keystore"].depend_on, "@java", "Setup step generate-keystore");
+expectDependency(manifest.setup.steps["ensure-database"].depend_on, "postgres", "Setup step ensure-database");
+expectDependency(manifest.setup.steps["build-keycloak"].depend_on, "@java", "Setup step build-keycloak");
 
 const artifact = manifest.artifact.platforms[platform];
 expect(Boolean(artifact), `Manifest is missing artifact platform ${platform}.`);
