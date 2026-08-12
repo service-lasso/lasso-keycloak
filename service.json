@@ -6,25 +6,109 @@
   "version": "23.0.4",
   "enabled": false,
   "execservice": "@java",
-  "ports": {
-    "service": 8116,
-    "https": 8117
-  },
+  "endpoints": [
+    {
+      "id": "http",
+      "kind": "network",
+      "label": "Keycloak HTTP",
+      "direction": "inbound",
+      "transport": "tcp",
+      "protocol": "http",
+      "bind": "127.0.0.1",
+      "port": {
+        "default": 8116,
+        "strategy": "preferred"
+      },
+      "exposure": "local",
+      "required": true,
+      "primary": true
+    },
+    {
+      "id": "https",
+      "kind": "network",
+      "label": "Keycloak HTTPS",
+      "direction": "inbound",
+      "transport": "tcp",
+      "protocol": "https",
+      "bind": "127.0.0.1",
+      "port": {
+        "default": 8117,
+        "strategy": "preferred"
+      },
+      "exposure": "local",
+      "required": true
+    },
+    {
+      "id": "base_url",
+      "kind": "url",
+      "label": "Keycloak",
+      "target": "http",
+      "url": "http://${endpoint.http.bind}:${endpoint.http.port}",
+      "exposure": "local",
+      "required": true,
+      "primary": true
+    },
+    {
+      "id": "admin_console",
+      "kind": "url",
+      "label": "Admin Console",
+      "target": "http",
+      "url": "${endpoint.base_url.url}/admin/",
+      "exposure": "local",
+      "required": true
+    },
+    {
+      "id": "health",
+      "kind": "url",
+      "label": "Health",
+      "target": "http",
+      "url": "${endpoint.base_url.url}/health",
+      "exposure": "local",
+      "required": true
+    },
+    {
+      "id": "ready",
+      "kind": "url",
+      "label": "Ready Health",
+      "target": "http",
+      "url": "${endpoint.base_url.url}/health/ready",
+      "exposure": "local",
+      "required": true
+    },
+    {
+      "id": "live",
+      "kind": "url",
+      "label": "Live Health",
+      "target": "http",
+      "url": "${endpoint.base_url.url}/health/live",
+      "exposure": "local",
+      "required": true
+    },
+    {
+      "id": "metrics",
+      "kind": "url",
+      "label": "Metrics",
+      "target": "http",
+      "url": "${endpoint.base_url.url}/metrics",
+      "exposure": "local",
+      "required": true
+    }
+  ],
   "env": {
     "SERVICE_BIN_PATH": "${SERVICE_ARTIFACT_ROOT}/keycloak",
     "SERVICE_DATA_PATH": "${SERVICE_ROOT}/runtime/data",
     "SERVICE_LOG_PATH": "${SERVICE_ROOT}/runtime/logs",
     "KEYCLOAK_ADMIN": "kadmin",
     "KEYCLOAK_ADMIN_PASSWORD": "kadmin",
-    "KEYCLOAK_URL": "http://127.0.0.1:${SERVICE_PORT}",
-    "KEYCLOAK_PORT": "${SERVICE_PORT}",
-    "KEYCLOAK_HTTPS_PORT": "${HTTPS_PORT}",
-    "KEYCLOAK_URL_HEALTH": "http://127.0.0.1:${SERVICE_PORT}/health",
-    "KEYCLOAK_URL_HEALTH_READY": "http://127.0.0.1:${SERVICE_PORT}/health/ready",
-    "KEYCLOAK_URL_HEALTH_LIVE": "http://127.0.0.1:${SERVICE_PORT}/health/live",
-    "KEYCLOAK_URL_METRICS": "http://127.0.0.1:${SERVICE_PORT}/metrics",
-    "KC_HTTP_PORT": "${SERVICE_PORT}",
-    "KC_HTTPS_PORT": "${HTTPS_PORT}",
+    "KEYCLOAK_URL": "${endpoint.base_url.url}",
+    "KEYCLOAK_PORT": "${endpoint.http.port}",
+    "KEYCLOAK_HTTPS_PORT": "${endpoint.https.port}",
+    "KEYCLOAK_URL_HEALTH": "${endpoint.health.url}",
+    "KEYCLOAK_URL_HEALTH_READY": "${endpoint.ready.url}",
+    "KEYCLOAK_URL_HEALTH_LIVE": "${endpoint.live.url}",
+    "KEYCLOAK_URL_METRICS": "${endpoint.metrics.url}",
+    "KC_HTTP_PORT": "${endpoint.http.port}",
+    "KC_HTTPS_PORT": "${endpoint.https.port}",
     "KC_HTTP_ENABLED": "true",
     "KC_PROXY": "edge",
     "KC_PROXY_ADDRESS_FORWARDING": "true",
@@ -72,28 +156,6 @@
     "KEYCLOAK_DATA_PATH": "${SERVICE_DATA_PATH}",
     "KEYCLOAK_LOG_PATH": "${SERVICE_LOG_PATH}"
   },
-  "urls": [
-    {
-      "label": "Keycloak",
-      "url": "${KEYCLOAK_URL}/",
-      "kind": "local"
-    },
-    {
-      "label": "Admin Console",
-      "url": "${KEYCLOAK_URL}/admin/",
-      "kind": "local"
-    },
-    {
-      "label": "Ready Health",
-      "url": "${KEYCLOAK_URL_HEALTH_READY}",
-      "kind": "local"
-    },
-    {
-      "label": "Metrics",
-      "url": "${KEYCLOAK_URL_METRICS}",
-      "kind": "local"
-    }
-  ],
   "artifact": {
     "kind": "archive",
     "source": {
@@ -182,7 +244,7 @@
     {
       "id": "keycloak-ready",
       "type": "http",
-      "url": "${KEYCLOAK_URL_HEALTH_READY}",
+      "url": "${endpoint.ready.url}",
       "expected_status": 200,
       "retries": 180,
       "interval": 1000

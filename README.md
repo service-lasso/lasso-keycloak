@@ -11,8 +11,8 @@ This repo packages upstream Keycloak `23.0.4` into Service Lasso release archive
 - Runtime provider: `@java`
 - Setup runtime provider: `@node`
 - Database provider: `postgres`
-- Default HTTP port: `8116`
-- Default HTTPS port: `8117`
+- HTTP endpoint: `http`, preferred local port `8116`
+- HTTPS endpoint: `https`, preferred local port `8117`
 - Health endpoint: `http://127.0.0.1:8116/health/ready`
 - Metrics endpoint: `http://127.0.0.1:8116/metrics`
 - Enabled by default: `false`
@@ -37,10 +37,11 @@ The manifest declares:
 
 - `execservice: "@java"` for startup/build.
 - `depend_on: ["@java", "@node", "postgres"]`.
+- `endpoints[]` with concrete HTTP/HTTPS network endpoints and URL endpoints for the base URL, admin console, health, readiness, liveness, and metrics surfaces.
 - `setup.steps.generate-keystore` for local PKCS12 keystore generation.
 - `setup.steps.ensure-database` for creating the `keycloak` PostgreSQL database when needed.
 - `setup.steps.build-keycloak` for the Keycloak optimized build.
-- `healthchecks[]` with `keycloak-ready` against the Keycloak ready endpoint.
+- `healthchecks[]` with `keycloak-ready` against `${endpoint.ready.url}`.
 - `scripts/lasso-keycloak.mjs` as the package-owned cross-platform helper for those setup steps.
 - `globalenv` outputs for URL, ports, admin credentials, health, metrics, data path, and log path.
 

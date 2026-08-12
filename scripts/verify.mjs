@@ -92,6 +92,29 @@ expect(manifest.version === version, `Expected manifest version ${version}, got 
 expect(manifest.enabled === false, "Keycloak should be disabled by default so apps opt in explicitly.");
 expect(manifest.execservice === "@java", "Keycloak must run through the Java provider.");
 expect(manifest.artifact?.source?.repo === "service-lasso/lasso-keycloak", "Manifest artifact source must point at service-lasso/lasso-keycloak.");
+expect(!Object.hasOwn(manifest, "ports"), "Keycloak manifest must author network interfaces through canonical endpoints[] instead of top-level ports.");
+expect(!Object.hasOwn(manifest, "urls"), "Keycloak manifest must author operator links through canonical url endpoints instead of top-level urls.");
+expect(Array.isArray(manifest.endpoints), "Keycloak manifest must declare canonical endpoints[].");
+const endpointById = new Map(manifest.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+for (const endpointId of ["http", "https", "base_url", "admin_console", "health", "ready", "live", "metrics"]) {
+  expect(endpointById.has(endpointId), `Keycloak manifest is missing endpoint ${endpointId}.`);
+}
+expect(endpointById.get("http").kind === "network", "Keycloak http endpoint must be a network endpoint.");
+expect(endpointById.get("http").protocol === "http", "Keycloak http endpoint must use http protocol.");
+expect(endpointById.get("http").port?.default === 8116, "Keycloak http endpoint must preserve preferred port 8116.");
+expect(endpointById.get("http").port?.strategy === "preferred", "Keycloak http endpoint must use preferred port strategy.");
+expect(endpointById.get("https").kind === "network", "Keycloak https endpoint must be a network endpoint.");
+expect(endpointById.get("https").protocol === "https", "Keycloak https endpoint must use https protocol.");
+expect(endpointById.get("https").port?.default === 8117, "Keycloak https endpoint must preserve preferred port 8117.");
+expect(endpointById.get("https").port?.strategy === "preferred", "Keycloak https endpoint must use preferred port strategy.");
+expect(endpointById.get("base_url").url === "http://${endpoint.http.bind}:${endpoint.http.port}", "Keycloak base URL endpoint must preserve the slashless KEYCLOAK_URL shape.");
+expect(endpointById.get("ready").kind === "url", "Keycloak ready endpoint must be a url endpoint.");
+expect(endpointById.get("ready").target === "http", "Keycloak ready endpoint must target the http endpoint.");
+expect(endpointById.get("ready").url === "${endpoint.base_url.url}/health/ready", "Keycloak ready endpoint must use endpoint selectors.");
+expect(manifest.env.KEYCLOAK_PORT === "${endpoint.http.port}", "KEYCLOAK_PORT must be a compatibility alias for endpoint.http.port.");
+expect(manifest.env.KEYCLOAK_HTTPS_PORT === "${endpoint.https.port}", "KEYCLOAK_HTTPS_PORT must be a compatibility alias for endpoint.https.port.");
+expect(!JSON.stringify(manifest).includes("${SERVICE_PORT}"), "Manifest must not author against legacy ${SERVICE_PORT} selectors.");
+expect(!JSON.stringify(manifest).includes("${HTTPS_PORT}"), "Manifest must not author against legacy ${HTTPS_PORT} selectors.");
 for (const providerId of requiredProviderIds) {
   expectDependency(manifest.depend_on, providerId, "Top-level depend_on");
 }
@@ -105,7 +128,7 @@ expect(manifest.healthchecks.length === 1, "Keycloak should declare one required
 const [readyHealthcheck] = manifest.healthchecks;
 expect(readyHealthcheck.id === "keycloak-ready", "Keycloak ready healthcheck must use stable id keycloak-ready.");
 expect(readyHealthcheck.type === "http", "Keycloak ready healthcheck should be an HTTP check.");
-expect(readyHealthcheck.url === "${KEYCLOAK_URL_HEALTH_READY}", "Keycloak healthcheck should use the ready endpoint.");
+expect(readyHealthcheck.url === "${endpoint.ready.url}", "Keycloak healthcheck should use the canonical ready endpoint selector.");
 expect(readyHealthcheck.expected_status === 200, "Keycloak ready healthcheck should expect HTTP 200.");
 
 for (const [stepId, helperCommand] of [
