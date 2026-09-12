@@ -38,9 +38,9 @@ The manifest declares:
 - `execservice: "@java"` for startup/build.
 - `depend_on: ["@java", "@node", "postgres"]`.
 - `endpoints[]` with concrete HTTP/HTTPS network endpoints and URL endpoints for the base URL, admin console, health, readiness, liveness, and metrics surfaces.
-- `setup.steps.generate-keystore` for local PKCS12 keystore generation.
-- `setup.steps.ensure-database` for creating the `keycloak` PostgreSQL database when needed.
-- `setup.steps.build-keycloak` for the Keycloak optimized build.
+- `setup.steps.generate-keystore` for local PKCS12 keystore generation, with a `creates` guard on `${SERVICE_DATA_PATH}/conf/server.keystore`.
+- `setup.steps.ensure-database` for creating the `keycloak` PostgreSQL database when needed, with a `creates` guard on `${SERVICE_DATA_PATH}/setup/database.ready`.
+- `setup.steps.build-keycloak` for the Keycloak optimized build, with a `creates` guard on `${SERVICE_DATA_PATH}/setup/build.ready`.
 - `healthchecks[]` with `keycloak-ready` against `${endpoint.ready.url}`.
 - `scripts/lasso-keycloak.mjs` as the package-owned cross-platform helper for those setup steps.
 - `globalenv` outputs for URL, ports, admin credentials, health, metrics, data path, and log path.
@@ -50,14 +50,16 @@ Until Service Lasso supports provider capability or alias resolution, Keycloak u
 The verifier checks the top-level and setup-step dependencies for these IDs and fails with a provider-specific error if
 one is missing or if the legacy PostgreSQL ID `postgredb` appears.
 
-The default admin values are local-development defaults:
+The local admin username is a non-secret operator identity. The admin password is not a static demo value.
 
 ```text
-KEYCLOAK_ADMIN=kadmin
-KEYCLOAK_ADMIN_PASSWORD=kadmin
+KEYCLOAK_ADMIN=keycloak-admin
+KEYCLOAK_ADMIN_PASSWORD=${keycloak.ADMIN_PASSWORD}
 ```
 
-Apps should override these when they include the service.
+On first-run onboard, Service Lasso asks Secrets Broker to generate `keycloak.ADMIN_PASSWORD` (`broker:generate`), persist it, and resolve it into setup/runtime env as `KEYCLOAK_ADMIN_PASSWORD`. The same resolved value is used for PKCS12 keystore passwords. Operators rotate it through Secrets Broker; Core restarts the service on change. `globalenv` publishes the username and URLs only — never the password.
+
+Deleting a `creates` output (keystore or a setup marker) causes Core `rerun: ifMissing` to run that step again. Leave present outputs in place to skip.
 
 ## Setup Helper
 
