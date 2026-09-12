@@ -1,5 +1,10 @@
 import { strict as assert } from "node:assert";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { ensureDatabase } from "./lasso-keycloak.mjs";
+
+const dataRoot = await mkdtemp(path.join(tmpdir(), "lasso-keycloak-setup-"));
 
 const baseEnv = {
   POSTGRE_HOST: "127.0.0.1",
@@ -8,6 +13,7 @@ const baseEnv = {
   POSTGRE_AUTH_PASSWORD: "super-secret-password",
   PGPASSWORD: "super-secret-password",
   PGDATABASE: "keycloak_app",
+  SERVICE_DATA_PATH: dataRoot,
 };
 
 function createPsqlDouble({ databaseExists = false, unavailable = false, authFailure = false } = {}) {
@@ -69,6 +75,9 @@ async function expectRejectsWithoutSecret(action, expectedText) {
   const fake = createPsqlDouble({ databaseExists: true });
   await ensureDatabase({ env: baseEnv, psql: fake.psql, sleepFn: async () => {}, timeoutMs: 1_000 });
   assert(fake.calls.some((args) => String(args.at(-1)).includes("FROM pg_database")), "Existing database flow should verify presence.");
+  const markerPath = path.join(dataRoot, "setup", "database.ready");
+  const marker = await readFile(markerPath, "utf8");
+  assert.equal(marker, "", "Database setup guard must be a secret-free empty marker file.");
 }
 
 await expectRejectsWithoutSecret(

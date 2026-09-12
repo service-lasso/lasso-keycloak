@@ -98,8 +98,8 @@
     "SERVICE_BIN_PATH": "${SERVICE_ARTIFACT_ROOT}/keycloak",
     "SERVICE_DATA_PATH": "${SERVICE_ROOT}/runtime/data",
     "SERVICE_LOG_PATH": "${SERVICE_ROOT}/runtime/logs",
-    "KEYCLOAK_ADMIN": "kadmin",
-    "KEYCLOAK_ADMIN_PASSWORD": "kadmin",
+    "KEYCLOAK_ADMIN": "keycloak-admin",
+    "KEYCLOAK_ADMIN_PASSWORD": "${keycloak.ADMIN_PASSWORD}",
     "KEYCLOAK_URL": "${endpoint.base_url.url}",
     "KEYCLOAK_PORT": "${endpoint.http.port}",
     "KEYCLOAK_HTTPS_PORT": "${endpoint.https.port}",
@@ -148,13 +148,77 @@
     "KEYCLOAK_PORT": "${KEYCLOAK_PORT}",
     "KEYCLOAK_HTTPS_PORT": "${KEYCLOAK_HTTPS_PORT}",
     "KEYCLOAK_ADMIN": "${KEYCLOAK_ADMIN}",
-    "KEYCLOAK_ADMIN_PASSWORD": "${KEYCLOAK_ADMIN_PASSWORD}",
     "KEYCLOAK_URL_HEALTH": "${KEYCLOAK_URL_HEALTH}",
     "KEYCLOAK_URL_HEALTH_READY": "${KEYCLOAK_URL_HEALTH_READY}",
     "KEYCLOAK_URL_HEALTH_LIVE": "${KEYCLOAK_URL_HEALTH_LIVE}",
     "KEYCLOAK_URL_METRICS": "${KEYCLOAK_URL_METRICS}",
     "KEYCLOAK_DATA_PATH": "${SERVICE_DATA_PATH}",
     "KEYCLOAK_LOG_PATH": "${SERVICE_LOG_PATH}"
+  },
+  "broker": {
+    "enabled": true,
+    "namespace": "services/keycloak",
+    "buckets": [
+      {
+        "namespace": "services/keycloak",
+        "kind": "service"
+      }
+    ],
+    "imports": [
+      {
+        "namespace": "services/keycloak",
+        "ref": "keycloak.ADMIN_PASSWORD",
+        "as": "KEYCLOAK_ADMIN_PASSWORD",
+        "required": true,
+        "onChange": {
+          "mode": "restart",
+          "reason": "reload generated Keycloak admin password after first-run onboard or rotation"
+        }
+      }
+    ],
+    "accessPolicy": {
+      "serviceId": "keycloak",
+      "workspace": "local-demo",
+      "grants": [
+        {
+          "namespace": "services/keycloak",
+          "scope": "service",
+          "refs": ["keycloak.ADMIN_PASSWORD"],
+          "operations": ["resolve", "create", "rotate"],
+          "purpose": "first-run generate, resolve, and rotate the local Keycloak admin password"
+        }
+      ]
+    },
+    "writeback": {
+      "allowedNamespaces": [
+        "services/keycloak"
+      ],
+      "allowedOperations": [
+        "create",
+        "rotate"
+      ],
+      "allowedRefs": [
+        "keycloak.ADMIN_PASSWORD"
+      ],
+      "allowOverwrite": false,
+      "auditReason": "first-run Keycloak admin password onboard",
+      "generatedSecrets": [
+        {
+          "ref": "keycloak.ADMIN_PASSWORD",
+          "source": "broker:generate",
+          "operation": "create",
+          "required": true
+        }
+      ]
+    },
+    "exports": [
+      {
+        "namespace": "services/keycloak",
+        "ref": "keycloak.ADMIN_PASSWORD",
+        "source": "broker:generate",
+        "required": true
+      }
+    ]
   },
   "artifact": {
     "kind": "archive",
@@ -208,7 +272,10 @@
           "default": "\"${SERVICE_ARTIFACT_ROOT}/scripts/lasso-keycloak.mjs\" generate-keystore"
         },
         "timeoutSeconds": 60,
-        "rerun": "ifMissing"
+        "rerun": "ifMissing",
+        "creates": [
+          "${SERVICE_DATA_PATH}/conf/server.keystore"
+        ]
       },
       "ensure-database": {
         "description": "Ensure the PostgreSQL keycloak database exists before optimized build/start.",
@@ -221,7 +288,10 @@
           "default": "\"${SERVICE_ARTIFACT_ROOT}/scripts/lasso-keycloak.mjs\" ensure-database"
         },
         "timeoutSeconds": 60,
-        "rerun": "ifMissing"
+        "rerun": "ifMissing",
+        "creates": [
+          "${SERVICE_DATA_PATH}/setup/database.ready"
+        ]
       },
       "build-keycloak": {
         "description": "Run the Keycloak optimized build after keystore and database preparation.",
@@ -236,7 +306,10 @@
           "default": "\"${SERVICE_ARTIFACT_ROOT}/scripts/lasso-keycloak.mjs\" build"
         },
         "timeoutSeconds": 300,
-        "rerun": "ifMissing"
+        "rerun": "ifMissing",
+        "creates": [
+          "${SERVICE_DATA_PATH}/setup/build.ready"
+        ]
       }
     }
   },

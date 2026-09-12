@@ -149,6 +149,26 @@ for (const [stepId, helperCommand] of [
 expectDependency(manifest.setup.steps["generate-keystore"].depend_on, "@java", "Setup step generate-keystore");
 expectDependency(manifest.setup.steps["ensure-database"].depend_on, "postgres", "Setup step ensure-database");
 expectDependency(manifest.setup.steps["build-keycloak"].depend_on, "@java", "Setup step build-keycloak");
+expect(
+  JSON.stringify(manifest.setup.steps["generate-keystore"].creates) === JSON.stringify(["${SERVICE_DATA_PATH}/conf/server.keystore"]),
+  "generate-keystore must declare a service-root keystore creates guard.",
+);
+expect(
+  JSON.stringify(manifest.setup.steps["ensure-database"].creates) === JSON.stringify(["${SERVICE_DATA_PATH}/setup/database.ready"]),
+  "ensure-database must declare a service-root database.ready creates guard.",
+);
+expect(
+  JSON.stringify(manifest.setup.steps["build-keycloak"].creates) === JSON.stringify(["${SERVICE_DATA_PATH}/setup/build.ready"]),
+  "build-keycloak must declare a service-root build.ready creates guard.",
+);
+expect(manifest.env.KEYCLOAK_ADMIN === "keycloak-admin", "KEYCLOAK_ADMIN must be a non-secret local operator username, not a demo password pair.");
+expect(manifest.env.KEYCLOAK_ADMIN_PASSWORD === "${keycloak.ADMIN_PASSWORD}", "KEYCLOAK_ADMIN_PASSWORD must resolve from the generated broker ref.");
+expect(!JSON.stringify(manifest).includes("kadmin"), "Manifest must not retain the static kadmin demo credential pair.");
+expect(!Object.hasOwn(manifest.globalenv ?? {}, "KEYCLOAK_ADMIN_PASSWORD"), "globalenv must not export the admin password.");
+expect(manifest.broker?.enabled === true, "Keycloak must declare a broker contract for generated admin credentials.");
+expect(manifest.broker?.writeback?.generatedSecrets?.[0]?.source === "broker:generate", "Admin password must be first-run broker-generated.");
+expect(manifest.broker?.writeback?.generatedSecrets?.[0]?.ref === "keycloak.ADMIN_PASSWORD", "Generated secret ref must be keycloak.ADMIN_PASSWORD.");
+expect(manifest.broker?.imports?.[0]?.as === "KEYCLOAK_ADMIN_PASSWORD", "Generated admin password must materialize as KEYCLOAK_ADMIN_PASSWORD.");
 
 const artifact = manifest.artifact.platforms[platform];
 expect(Boolean(artifact), `Manifest is missing artifact platform ${platform}.`);

@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +17,27 @@ function requireEnv(name, env = process.env) {
     throw new Error(`Missing required environment variable ${name}.`);
   }
   return value;
+}
+
+/**
+ * Writes a secret-free setup guard file under SERVICE_DATA_PATH.
+ * Core `creates` paths must stay inside the service root; artifact-root
+ * Keycloak build outputs cannot be used as those guards.
+ *
+ * @param {string} markerName File name under `setup/`, such as `database.ready`.
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {Promise<string>} Absolute marker path.
+ */
+async function writeSetupGuardMarker(markerName, env = process.env) {
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(markerName)) {
+    throw new Error(`Invalid setup guard marker name: ${markerName}`);
+  }
+  const dataPath = requireEnv("SERVICE_DATA_PATH", env);
+  const markerPath = path.join(dataPath, "setup", markerName);
+  await mkdir(path.dirname(markerPath), { recursive: true });
+  await writeFile(markerPath, "", { encoding: "utf8" });
+  console.log(`[lasso-keycloak] wrote setup guard ${markerPath}`);
+  return markerPath;
 }
 
 function envPath(rootName, relativeExecutable, fallback, env = process.env) {
@@ -222,6 +243,7 @@ export async function ensureDatabase({ env = process.env, psql = invokePsql, tim
   if (exists !== "1") {
     throw new Error(`PostgreSQL did not report the ${database} database after setup.`);
   }
+  await writeSetupGuardMarker("database.ready", env);
   console.log(`[lasso-keycloak] PostgreSQL database "${database}" is ready`);
 }
 
@@ -263,6 +285,7 @@ async function buildKeycloak() {
   ];
 
   run(javaExecutable(), javaArgs);
+  await writeSetupGuardMarker("build.ready");
 }
 
 const commands = {
